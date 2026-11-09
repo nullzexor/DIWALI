@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Diwali & New Year 3D Sky-Shot Engine — @nullxor</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; user-select: none; }
+  body { background: #050508; overflow: hidden; height: 100vh; display: flex; align-items: center; justify-content: center; perspective: 1200px; }
+  canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+
+  /* 3D Glassmorphic Holographic Card */
+  .card-wrap { position: relative; z-index: 10; width: 430px; height: 500px; transform-style: preserve-3d; transition: transform 0.08s ease-out; }
+  .card {
+    position: relative; width: 100%; height: 100%; border-radius: 28px;
+    background: rgba(17, 19, 31, 0.72); backdrop-filter: blur(18px);
+    border: 1.5px solid rgba(255, 215, 0, 0.4);
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.85), 0 0 50px rgba(255, 170, 0, 0.2), inset 0 0 30px rgba(0, 245, 212, 0.1);
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: 34px 28px; text-align: center; overflow: hidden; transform-style: preserve-3d;
+  }
+  .glare {
+    position: absolute; inset: -60%; pointer-events: none;
+    background: radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.26), rgba(0, 245, 212, 0.14) 35%, transparent 65%);
+    mix-blend-mode: screen; transition: transform 0.05s linear;
+  }
+  .tag {
+    font-family: monospace; font-size: 12px; letter-spacing: 2.5px; text-transform: uppercase;
+    color: #00F5D4; background: rgba(0, 245, 212, 0.12); border: 1px solid rgba(0, 245, 212, 0.45);
+    padding: 6px 16px; border-radius: 99px; transform: translateZ(35px);
+  }
+  h1 {
+    font-size: 28px; font-weight: 900; letter-spacing: 0.6px; line-height: 1.18;
+    background: linear-gradient(135deg, #FFFFFF 0%, #FFD700 50%, #00F5D4 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 18px rgba(255, 215, 0, 0.35)); transform: translateZ(50px);
+  }
+  .sub { color: #94A3B8; font-size: 14px; line-height: 1.5; max-width: 340px; transform: translateZ(30px); }
+
+  /* Interactive Particle Diya Base */
+  .diya-zone { position: relative; width: 140px; height: 130px; display: flex; align-items: flex-end; justify-content: center; cursor: pointer; transform: translateZ(65px); }
+  .diya-bowl {
+    width: 114px; height: 44px;
+    background: linear-gradient(180deg, #F59E0B 0%, #78350F 100%);
+    border-radius: 10px 10px 60px 60px;
+    border-top: 3px solid #FDE047;
+    box-shadow: 0 10px 35px rgba(255, 158, 0, 0.6), inset 0 -6px 12px rgba(0,0,0,0.6);
+    position: relative;
+  }
+  .flame-glow {
+    position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+    width: 34px; height: 62px; border-radius: 50% 50% 35% 35%;
+    background: radial-gradient(ellipse at bottom, #FFFFFF 12%, #FDE047 45%, #FF2A54 85%, transparent 100%);
+    filter: blur(1px) drop-shadow(0 0 28px #FFB703) drop-shadow(0 0 55px #FF2A54);
+    animation: flicker 0.14s infinite alternate; transition: transform 0.3s ease;
+  }
+  @keyframes flicker {
+    0% { transform: translateX(-50%) scale(0.94, 1.05) rotate(-2deg); }
+    100% { transform: translateX(-50%) scale(1.06, 0.96) rotate(2deg); }
+  }
+
+  /* Main Interactive Action Button */
+  .btn-main {
+    cursor: pointer; border: none; outline: none; font-weight: 800; font-size: 14px; letter-spacing: 1px;
+    padding: 15px 28px; border-radius: 14px; color: #050508;
+    background: linear-gradient(90deg, #FFD700, #00F5D4);
+    box-shadow: 0 0 30px rgba(0, 245, 212, 0.45);
+    transition: transform 0.2s, box-shadow 0.2s; transform: translateZ(45px);
+  }
+  .btn-main:hover { transform: translateZ(55px) scale(1.05); box-shadow: 0 0 42px rgba(255, 215, 0, 0.85); }
+</style>
+</head>
+<body>
+
+<canvas id="fx"></canvas>
+
+<div class="card-wrap" id="wrap">
+  <div class="card" id="card">
+    <div class="glare" id="glare"></div>
+    <span class="tag" id="tag">⚡ 60FPS FESTIVAL PHYSICS ENGINE</span>
+    <h1 id="title">FESTIVAL OF LIGHTS<br>& CODE</h1>
+    <p class="sub" id="desc">Autonomous sky-shot crackers are live across your screen. Click the glowing Diya to unlock New Year 2027 Overdrive!</p>
+
+    <div class="diya-zone" id="diya" onclick="triggerOverdrive()">
+      <div class="flame-glow" id="flame"></div>
+      <div class="diya-bowl"></div>
+    </div>
+
+    <button class="btn-main" id="actionBtn" onclick="triggerOverdrive()">IGNITE NEW YEAR 2027 OVERDRIVE ✨</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('fx'), ctx = canvas.getContext('2d');
+let W = canvas.width = innerWidth, H = canvas.height = innerHeight;
+addEventListener('resize', () => { W = canvas.width = innerWidth; H = canvas.height = innerHeight; });
+
+const wrap = document.getElementById('wrap'), glare = document.getElementById('glare');
+const particles = [], rockets = [];
+const PALETTE = ['#FFD700', '#00F5D4', '#FF2A54', '#A855F7', '#FDE047', '#FFFFFF'];
+let overdrive = false;
+
+// Exploding Cracker Particle Class
+class Spark {
+  constructor(x, y, vx, vy, color, size, decay) {
+    Object.assign(this, { x, y, vx, vy, color, size, alpha: 1, decay });
+  }
+  update() {
+    this.vx *= 0.985; this.vy = this.vy * 0.985 + 0.085; // Gravity + Air Resistance
+    this.x += this.vx; this.y += this.vy; this.alpha -= this.decay;
+  }
+  draw() {
+    ctx.save(); ctx.globalAlpha = Math.max(0, this.alpha);
+    ctx.fillStyle = this.color; ctx.shadowBlur = 15; ctx.shadowColor = this.color;
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+// Rising Sky-Shot Rocket Class (Launches & Explodes Randomly Everywhere)
+class Rocket {
+  constructor() {
+    this.x = W * (0.06 + Math.random() * 0.88);
+    this.y = H + 10;
+    this.targetY = H * (0.10 + Math.random() * 0.62);
+    this.vx = (Math.random() - 0.5) * 2.2;
+    this.vy = -(9 + Math.random() * 5.5);
+    this.color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    particles.push(new Spark(this.x, this.y, (Math.random() - 0.5) * 0.8, 1.2, '#FFD700', 1.6, 0.06));
+    if (this.y <= this.targetY) {
+      burst(this.x, this.y, overdrive ? 110 : 75);
+      return true;
+    }
+    return false;
+  }
+}
+
+// 360-Degree Cracker Detonation
+function burst(x, y, count = 85) {
+  const baseColor = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.25;
+    const speed = 1.8 + Math.random() * 8.5;
+    const col = Math.random() > 0.35 ? baseColor : PALETTE[Math.floor(Math.random() * PALETTE.length)];
+    particles.push(new Spark(x, y, Math.cos(angle) * speed, Math.sin(angle) * speed, col, 1.6 + Math.random() * 2.4, 0.011 + Math.random() * 0.01));
+  }
+}
+
+// Launch Initial Salvo Immediately on Load
+for (let i = 0; i < 4; i++) {
+  setTimeout(() => burst(W * (0.15 + Math.random() * 0.7), H * (0.15 + Math.random() * 0.55), 85), i * 250);
+}
+
+// 3D Holographic Card Tilt on Mouse Move
+addEventListener('mousemove', (e) => {
+  const rx = ((e.clientY / H) - 0.5) * -24, ry = ((e.clientX / W) - 0.5) * 24;
+  wrap.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+  glare.style.transform = `translate(${(e.clientX / W - 0.5) * 120}px,${(e.clientY / H - 0.5) * 120}px)`;
+});
+
+// Unlock New Year 2027 Overdrive & Mega Sky-Shot Barrage
+function triggerOverdrive() {
+  overdrive = true;
+  document.getElementById('tag').textContent = '🎆 SAAL MUBARAK // NEW YEAR 2027';
+  document.getElementById('title').innerHTML = 'HAPPY DIWALI &<br>NUTAN VARSHABHINANDAN';
+  document.getElementById('desc').textContent = 'Wishing you a luminous Diwali and a prosperous New Year filled with clean code, high returns & unstoppable growth!';
+  document.getElementById('actionBtn').textContent = 'LAUNCH MEGA SKY-SHOT BARRAGE 🎆';
+  for (let i = 0; i < 6; i++) {
+    setTimeout(() => burst(W * (0.1 + Math.random() * 0.8), H * (0.12 + Math.random() * 0.65), 115), i * 160);
+  }
+}
+
+// Continuous 60FPS Autonomous Firework Loop
+(function loop() {
+  ctx.fillStyle = 'rgba(5, 5, 8, 0.22)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Continuously spawn rising rockets & random mid-air cracker bursts everywhere
+  if (Math.random() < (overdrive ? 0.09 : 0.045)) rockets.push(new Rocket());
+  if (Math.random() < (overdrive ? 0.07 : 0.035)) {
+    burst(W * (0.08 + Math.random() * 0.84), H * (0.10 + Math.random() * 0.68), overdrive ? 95 : 65);
+  }
+
+  for (let i = rockets.length - 1; i >= 0; i--) {
+    if (rockets[i].update()) rockets.splice(i, 1);
+  }
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].update(); particles[i].draw();
+    if (particles[i].alpha <= 0) particles.splice(i, 1);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
